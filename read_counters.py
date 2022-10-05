@@ -90,6 +90,7 @@ try:
 except:
     flag_old=False
     logging.error("Couldn't connect to the old DB")
+    print (traceback.format_exc())
 
 # Подключение к новой БД
 if new_db_flag:
@@ -101,6 +102,7 @@ if new_db_flag:
     except:
         flag_new=False
         logging.error("Could not connect to the new DB")
+        print (traceback.format_exc())
 
 if flag_old:
     # cоздание списков из старой БД
@@ -166,6 +168,7 @@ if flag_old:
                 print("failed to connect to the DB "+scout["ip_rassbery"]+" : "+scout["fdb_path"])
                 logging.error("Could not connect to SCAUT "+scout["ip_rassbery"]+" : "+scout["fdb_path"])
                 count_connect+=1
+                print (traceback.format_exc())
         
         if flag:        
             data = pd.read_sql(sql_data, fdb_con)
@@ -224,6 +227,7 @@ if flag_old:
                         path = file_name + ".txt"
                         data_old.to_csv(path,sep=';')
                         logging.error("============= DATE_VALUE is not saved in the old DB")
+                        print (traceback.format_exc())
 
                     del data_old
                 bad_count = data[data["id_klemma"] == 0 ].shape[0]
@@ -246,13 +250,14 @@ if flag_old:
                             try:
                                 data_old.to_sql('indication',con=engine_new,schema=new_db_schema,index =False,if_exists ='append',method='multi')
                                 logging.info("============= DATE_VALUE stored in the new DB")
-                            except Exception as ex:
+                            except:
                                 path = file_name + ".new.txt"
                                 data_old.to_csv(path,sep=';')
-                                print('date_value new not preserved')
+                                #print('date_value new not preserved')
                                 #print('Error:'+str(ex))
                                 logging.error("============= DATE_VALUE is not saved in the new DB")
                                 #logging.error("============= " + str(ex))
+                                print (traceback.format_exc())
 
                             del data_old
                         bad_count = data[data["id_counter"] == 0 ].shape[0]
@@ -308,6 +313,7 @@ if flag_old:
                         teplo_old.to_csv(path,sep=';')
                         #print('teplo date_value not preserved')
                         logging.error("============= TEPLO_VALUE is not saved in the old DB(energy)")
+                        print (traceback.format_exc())
                     del teplo_old
 
                     teplo_old=teplo[teplo["id_klemma"] != 0 ][["id_klemma","DATE_VAL","ENERGY","T1","T2","V","R","M"]]  
@@ -330,11 +336,12 @@ if flag_old:
                         fdb_con.commit()
                         fdb_con.close()
                         logging.info("============= records in TEPLO_VALUE have been deleted on the SCAUT")
-                    except Exception as ex:
+                    except:
                         path = file_name + '.teplo_all.txt'
                         teplo_old.to_csv(path,sep=';')
                         #print('heat_indication not preserved' + str(ex))
                         logging.error("============= TEPLO_VALUE is not saved in the old DB(all data)")
+                        print (traceback.format_exc())
                         #logging.error("============= " + str(ex))
                     del teplo_old
                 
@@ -363,12 +370,13 @@ if flag_old:
                             try:
                                 teplo_old.to_sql('heat_indication',con=engine_new,schema=new_db_schema,index =False,if_exists ='append',method='multi')
                                 logging.info("============= TEPLO_VALUE stored in the new DB(all data)")
-                            except Exception as ex:   
-                                print('heat_indication new not preserved')
+                            except:   
+                                #print('heat_indication new not preserved')
                                 #print(ex)
                                 path = file_name +'.teplo_all.new.txt'
                                 teplo_old.to_csv(path,sep=';')
                                 logging.error("============= TEPLO_VALUE is not saved in the new DB(all data)")
+                                print (traceback.format_exc())
                                 #logging.error("============= " + str(ex))
                             del teplo_old
                         
