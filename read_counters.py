@@ -112,8 +112,8 @@ if flag_old:
                             from  cnt.counter ct left join cnt.kpu k on k.id_kpu=ct.id_kpu
                             left join flat f on ct.id_flat = f.id_flat
                             where (k.workability is null or k.workability = 1) and ct.working_capacity = true""" 
-    scouts = pd.read_sql(scout_old_sql, conn))
-    counters = pd.read_sql(counters_old_sql,conn))
+    scouts = pd.read_sql(scout_old_sql, conn)
+    counters = pd.read_sql(counters_old_sql,conn)
     conn.close()
 
     logging.debug("Creating list SCOUT")
