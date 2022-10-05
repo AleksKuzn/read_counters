@@ -1,3 +1,5 @@
+#!/python2
+# -*- coding: utf-8 -*-
 
 import fdb
 import psycopg2
@@ -110,8 +112,8 @@ if flag_old:
                             from  cnt.counter ct left join cnt.kpu k on k.id_kpu=ct.id_kpu
                             left join flat f on ct.id_flat = f.id_flat
                             where (k.workability is null or k.workability = 1) and ct.working_capacity = true""" 
-    scouts = pd.read_sql(scout_old_sql, conn)#,index_col='id_entr')
-    counters = pd.read_sql(counters_old_sql,conn)#,index_col='id_klemma')
+    scouts = pd.read_sql(scout_old_sql, conn))
+    counters = pd.read_sql(counters_old_sql,conn))
     conn.close()
 
     logging.debug("Creating list SCOUT")
@@ -138,7 +140,7 @@ if flag_old:
             date = strftime('%Y%m%d_%H-%M')
             file_name = wd+date+'_'+scout["ip_rassbery"]+'.'+scout["fdb_path"]
         else:
-            file_name = wd+'_'+scout["ip_rassbery"]+'.'+scout["fdb_path"]
+            file_name = wd+scout["ip_rassbery"]+'.'+scout["fdb_path"]
             
         # Поиск СКАУТа в новой базе
         if new_db_flag:
@@ -148,8 +150,6 @@ if flag_old:
             if complex.shape[0] > 0:
                 id_complex = complex.iloc[0]['id_complex']            
                 scouts.loc[i,'id_complex'] = id_complex
-                
-#       print(i,scout["ip_rassbery"],' ',scout["fdb_path"], scouts['id_complex'][i])
  
         # Подсоединяемся к СКАУТ
         count_connect = 0
@@ -171,9 +171,7 @@ if flag_old:
         
         if flag:        
             data = pd.read_sql(sql_data, fdb_con)
-            teplo = pd.read_sql(teplo_data, fdb_con)
             max_data_id = data['ID_VALUE'].max()
-            max_teplo_id = teplo['ID_VALUE'].max()
             data.insert(1, "last_date", 0) # для старой БД
             data.insert(1, "last_date_n", 0) # для новой БД
             data.insert(1, "id_klemma", 0) # для старой БД
@@ -222,8 +220,10 @@ if flag_old:
                             flag_delete = False
                             logging.error("============= duplicate records in DATE_VALUE is not saved in the old DB")
                             print (traceback.format_exc())
-
+                    del data_duplicate
+                    
                     data_old = data_recognized[data_recognized["DATE_VAL"] > data_recognized["last_date"]][["id_klemma","DATE_VAL","VALUE_ZN","EMPTY","LINE_STATE"]]
+                    del data_recognized
                     if data_old.shape[0] != 0:
                         data_old.rename(columns = {'VALUE_ZN':'impulse_value'}, inplace = True) 
                         data_old.rename(columns = {'DATE_VAL':'date_val'}, inplace = True) 
@@ -235,14 +235,12 @@ if flag_old:
                         except:
                             flag_delete = False
                             path = file_name + ".txt"
-                            data_recognized.to_csv(path,sep=';')
+                            data_old.to_csv(path,sep=';')
                             logging.error("============= DATE_VALUE is not saved in the old DB")
                             print (traceback.format_exc())
                     else: logging.info("============= There is no new data in DATE_VALUE")
                     
                     del data_old
-                    del data_recognized
-                    del data_duplicate
                 
                 if flag_delete:
                     try:
@@ -277,8 +275,10 @@ if flag_old:
                                 except:
                                     logging.error("============= duplicate records in TEPLO_VALUE is not saved in the new DB(energy)")
                                     print (traceback.format_exc())
+                            del data_duplicate
                             
                             data_old = data_recognized[data_recognized["DATE_VAL"] > data_recognized["last_date_n"]][["id_counter","DATE_VAL","VALUE_ZN","EMPTY","LINE_STATE"]]
+                            del data_recognized
                             if data_old.shape[0] != 0:
                                 data_old.rename(columns = {'VALUE_ZN':'impulse_count'}, inplace = True) 
                                 data_old.rename(columns = {'DATE_VAL':'date_value'}, inplace = True) 
@@ -295,19 +295,20 @@ if flag_old:
                             else: logging.info("============= There is no new data in DATE_VALUE")
 
                             del data_old
-                            del data_recognized
-                            del data_duplicate
                             
                         bad_count = data[data["id_counter"] == 0 ].shape[0]
                         if bad_count != 0:
                             path = file_name + '_bad.new.txt'
                             data[data["id_counter"] == 0 ].to_csv(path,sep=';')
                             logging.error("============= There are unrecognized counters in DATE_VALUE (new DB) - "+str(bad_count))
+                    else: logging.error("============= there is no scout in the new DB")
             else:
                 logging.info("============= There is no data on the SCOUT in DATE_VALUE")
 
             del data
             # Теплосчетчики
+            teplo = pd.read_sql(teplo_data, fdb_con)
+            max_teplo_id = teplo['ID_VALUE'].max()
             teplo.insert(1, "last_date", 0) # для старой БД
             teplo.insert(1, "last_date_n", 0) # для новой БД
             teplo.insert(1, "id_klemma", 0)
@@ -320,6 +321,7 @@ if flag_old:
                 # ищем счетчик в старой БД
                 counter = counters[(counters["id_entr_"] == id_entr)&
                     (counters["serial_number"] == ser_num)]
+                    
                 if counter.shape[0] > 0:
                     teplo.loc[j,'id_klemma'] =  counter.iloc[0]['id_klemma']
                     teplo.loc[j,'last_date'] =  counter.iloc[0]['last_date']
@@ -351,6 +353,7 @@ if flag_old:
                             flag_delete = False
                             logging.error("============= duplicate records in TEPLO_VALUE is not saved in the old DB(energy)")
                             print (traceback.format_exc())
+                    del data_duplicate
                     try:                        
                         teplo_old = data_recognized[data_recognized["DATE_VAL"] > data_recognized["last_date"]][["id_klemma","DATE_VAL","ENERGY"]]
                         if teplo_old.shape[0] != 0:
@@ -370,10 +373,9 @@ if flag_old:
                         print (traceback.format_exc())
                     
                     del teplo_old
-                    del data_duplicate
 
                     teplo_old= data_recognized[data_recognized["DATE_VAL"] > data_recognized["last_date"]][["id_klemma","DATE_VAL","ENERGY","T1","T2","V","R","M"]]  
-                    
+                    del data_recognized
                     teplo_old.rename(columns = {'DATE_VAL':'date_value'}, inplace = True) 
                     teplo_old.rename(columns = {'id_klemma':'id_counter'}, inplace = True)
                     teplo_old.rename(columns = {'ENERGY':'q'}, inplace = True) 
@@ -394,7 +396,6 @@ if flag_old:
                         print (traceback.format_exc())
                     
                     del teplo_old
-                    del data_recognized
                 
                 if flag_delete:
                     try:
@@ -431,8 +432,9 @@ if flag_old:
                                 except:
                                     logging.error("============= duplicate records in TEPLO_VALUE is not saved in the new DB(all data)")
                                     print (traceback.format_exc())
-                            
+                            del data_duplicate
                             teplo_old= data_recognized[data_recognized["DATE_VAL"] > data_recognized["last_date_n"]][["id_counter","DATE_VAL","ENERGY","T1","T2","V","R","M"]]  
+                            del data_recognized
                             if teplo_old.shape[0] != 0:
                                 teplo_old.rename(columns = {'DATE_VAL':'date_value'}, inplace = True) 
                                 teplo_old.rename(columns = {'ENERGY':'q'}, inplace = True) 
@@ -443,7 +445,17 @@ if flag_old:
                                 teplo_old.rename(columns = {'T2':'t2'}, inplace = True) 
                                 teplo_old.insert(1,'system_number',1)
                                 try:
-                                    teplo_old.to_sql('heat_indication',con=engine_new,schema=new_db_schema,index =False,if_exists ='append',method='multi')
+                                    df_columns = list(teplo_old)
+                                    columns = ",".join(df_columns)
+                                    values = "VALUES({})".format(",".join(["%s" for _ in df_columns]))
+                                    table_u = new_db_schema+'.v_heat_indication'
+                                    table = table_u.encode('utf-8')
+                                    insert_stmt = "INSERT INTO {} ({}) {}".format(table, columns, values)
+                                    conn_new = psycopg2.connect(dbname=new_db_name,user=new_db_user, host=new_db_host, password=new_db_password, port=new_db_port)
+                                    cur = conn_new.cursor()
+                                    psycopg2.extras.execute_batch(cur, insert_stmt, teplo_old.values)
+                                    conn_new.commit()
+                                    conn_new.close()
                                     logging.info("============= TEPLO_VALUE saved in the new DB(all data)")
                                 except:   
                                     path = file_name +'.teplo_all.new.txt'
@@ -451,16 +463,14 @@ if flag_old:
                                     logging.error("============= TEPLO_VALUE is not saved in the new DB(all data)")
                                     print (traceback.format_exc())
                                     
-                            del teplo_old
-                            del data_recognized
-                            del data_duplicate
+                            del teplo_old 
                         
                         bad_count = teplo[teplo["id_counter"] == 0 ].shape[0]
                         if bad_count != 0:                    
                             path = file_name +'.teplo_bad.new.txt'
                             teplo[teplo["id_counter"] == 0 ].to_csv(path,sep=';')
                             logging.error("============= There are unrecognized counters in TEPLO_VALUE (new DB) - "+str(bad_count))
-                    
+                    else: logging.info("============= there is no scout in the new DB")
             else:
                 logging.info("============= There is no data on the SCOUT in TEPLO_VALUE")
 
