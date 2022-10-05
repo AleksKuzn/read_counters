@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 import fdb
 import psycopg2
@@ -7,7 +6,7 @@ from sqlalchemy import create_engine
 import logging
 import configparser
 from distutils.util import strtobool
-from time import strftime
+from time import strftime,strptime
 import inspect, os.path
 import traceback
 
@@ -121,11 +120,11 @@ if flag_old:
     if new_db_flag:
         if flag_new:
             scout_new_sql = "select distinct id_complex, ip_address,alias_fdb from scout.v_scout_full where workability = true and not alias_fdb is null;"
-            counters_new_sql = """  select id_counter,serial_number,terminal_number,address,type_number,id_complex, null as value_date
+            counters_new_sql = """  select id_counter,serial_number,terminal_number,address,type_number,id_complex, cast (value_date as timestamp without time zone) 
                                     from resources.v_controller_counter
                                     where counter_workability = true and controller_workability = true
                                     union
-                                    select id_counter,serial_number,null as terminal_number,null as address,null as type_number,id_complex, value_date
+                                    select id_counter,serial_number,null as terminal_number,null as address,null as type_number,id_complex, cast (value_date as timestamp without time zone)
                                     from resources.v_heat_counter where workability = true"""
             scouts_new = pd.read_sql(scout_new_sql, conn_new)
             counters_new = pd.read_sql(counters_new_sql,conn_new)
@@ -203,7 +202,7 @@ if flag_old:
                     if counter_new.shape[0] > 0:
                         data.loc[j,'id_counter'] =  counter_new.iloc[0]['id_counter']
                         data.loc[j,'last_date_n'] =  counters_new.iloc[0]['value_date']
-                
+               
             if data.shape[0] != 0:                
                 logging.info("============= There are "+str(data.shape[0])+" records in DATE_VALUE on the SCOUT")
 
@@ -213,7 +212,6 @@ if flag_old:
                 if data_recognized.shape[0] != 0:
                     flag_delete = True
                     logging.info("============= There are "+str(data_recognized.shape[0])+" recognized records in DATE_VALUE (old DB)")  
-                    
                     data_duplicate = data_recognized[data_recognized["DATE_VAL"] <= data_recognized["last_date"]][["id_klemma","DATE_VAL","VALUE_ZN","EMPTY","LINE_STATE"]]
                     if data_duplicate.shape[0] != 0:
                         try:
@@ -222,9 +220,9 @@ if flag_old:
                             data_duplicate.to_csv(path,sep=';')
                         except:
                             flag_delete = False
-                            logging.error("============= duplicate records in TEPLO_VALUE is not saved in the old DB(energy)")
+                            logging.error("============= duplicate records in DATE_VALUE is not saved in the old DB")
                             print (traceback.format_exc())
-                    
+
                     data_old = data_recognized[data_recognized["DATE_VAL"] > data_recognized["last_date"]][["id_klemma","DATE_VAL","VALUE_ZN","EMPTY","LINE_STATE"]]
                     if data_old.shape[0] != 0:
                         data_old.rename(columns = {'VALUE_ZN':'impulse_value'}, inplace = True) 
@@ -256,7 +254,7 @@ if flag_old:
                     except:
                         logging.info("============= deleting records on the SCOUT ended with an error")
                         print (traceback.format_exc())
-                else: logging.info("============= records in TEPLO_VALUE were not deleted on SCOUT")    
+                else: logging.info("============= records in DATE_VALUE were not deleted on SCOUT")    
                 
                 bad_count = data[data["id_klemma"] == 0 ].shape[0]
                 if bad_count != 0:
@@ -267,11 +265,9 @@ if flag_old:
                 # Записываем показания в новую базу
                 if new_db_flag:
                     if id_complex != 0:
-                        #good_count = data[data["id_counter"] != 0 ].shape[0]
                         data_recognized = data[data["id_counter"] != 0]
                         if data_recognized.shape[0] != 0:
                             logging.info("============= There are "+str(data_recognized.shape[0])+" recognized records in DATE_VALUE (new DB)")
-                            
                             data_duplicate = data_recognized[data_recognized["DATE_VAL"] <= data_recognized["last_date_n"]][["id_counter","DATE_VAL","VALUE_ZN","EMPTY","LINE_STATE"]]
                             if data_duplicate.shape[0] != 0:
                                 try:
@@ -311,14 +307,15 @@ if flag_old:
                 logging.info("============= There is no data on the SCOUT in DATE_VALUE")
 
             del data
-
             # Теплосчетчики
             teplo.insert(1, "last_date", 0) # для старой БД
             teplo.insert(1, "last_date_n", 0) # для новой БД
             teplo.insert(1, "id_klemma", 0)
             teplo.insert(1, "id_counter", 0)
             for j, pok in teplo.iterrows():
-                ser_num = pok["SER_NUM"]
+            
+                ser_num_u = pok["SER_NUM"]
+                ser_num = ser_num_u.encode('utf-8')
                 
                 # ищем счетчик в старой БД
                 counter = counters[(counters["id_entr_"] == id_entr)&
