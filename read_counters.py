@@ -107,7 +107,7 @@ if new_db_flag:
 if flag_old:
     # cоздание списков из старой БД
     scout_old_sql = "select id_entr, ip_rassbery,fdb_login,fdb_password,fdb_path from save.login_data where not fdb_path is null;"
-    counters_old_sql = """  select id_klemma,coalesce(k.id_entr,ct.id_entr,f.id_entr) as id_entr_,adress,type_kpu,klemma,serial_number,last_date
+    counters_old_sql = """  select id_klemma,coalesce(k.id_entr,ct.id_entr,f.id_entr) as id_entr_,adress,type_kpu,klemma,serial_number,case when last_date is null then '2000-01-01 00:00:00' else last_date end AS last_date
                             from  cnt.counter ct left join cnt.kpu k on k.id_kpu=ct.id_kpu
                             left join flat f on ct.id_flat = f.id_flat
                             where (k.workability is null or k.workability = 1) and ct.working_capacity = true""" 
@@ -120,11 +120,11 @@ if flag_old:
     # создание списков из новой БД
     if new_db_flag:
         scout_new_sql = "select distinct id_complex, ip_address,alias_fdb from scout.v_scout_full where workability = true and not alias_fdb is null;"
-        counters_new_sql = """  select id_counter,serial_number,terminal_number,address,type_number,id_complex, cast (value_date as timestamp without time zone) 
+        counters_new_sql = """  select id_counter,serial_number,terminal_number,address,type_number,id_complex, cast ((case when value_date is null then '2000-01-01 00:00:00' else value_date end) as timestamp without time zone) 
                                 from resources.v_controller_counter
                                 where counter_workability = true and controller_workability = true
                                 union
-                                select id_counter,serial_number,null as terminal_number,null as address,null as type_number,id_complex, cast (value_date as timestamp without time zone)
+                                select id_counter,serial_number,null as terminal_number,null as address,null as type_number,id_complex, cast ((case when value_date is null then '2000-01-01 00:00:00' else value_date end) as timestamp without time zone)
                                 from resources.v_heat_counter where workability = true"""
         scouts_new = pd.read_sql(scout_new_sql, conn_new)
         counters_new = pd.read_sql(counters_new_sql,conn_new)
